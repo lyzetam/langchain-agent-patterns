@@ -11,8 +11,7 @@ pip install -U "langchain[openai]"
 pip install -U "langchain[anthropic]"
 
 # Multi-agent libraries
-pip install langgraph-supervisor
-pip install langgraph-swarm
+pip install -U deepagents  # official Deep Agents framework
 
 # Checkpointing
 pip install langgraph-checkpoint-sqlite
@@ -30,7 +29,7 @@ def get_weather(city: str) -> str:
     return f"It's always sunny in {city}!"
 
 agent = create_agent(
-    model="gpt-4o",  # or "claude-sonnet-4-5-20250929"
+    model="anthropic:claude-sonnet-4-6",  # or "openai:gpt-5"
     tools=[get_weather],
     system_prompt="You are a helpful assistant"
 )
@@ -81,38 +80,60 @@ config = {"configurable": {"thread_id": "1"}}
 agent.invoke({"messages": [msg]}, config=config)
 ```
 
-## Multi-Agent: Supervisor
+## Multi-Agent: Subagents (agent-as-tool)
 
 ```python
-from langgraph_supervisor import create_supervisor
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
+from langchain.tools import tool
 
-agent1 = create_react_agent(model, tools=[tool1], name="agent1")
-agent2 = create_react_agent(model, tools=[tool2], name="agent2")
+# Specialized subagents
+agent1 = create_agent(model, tools=[tool1])
+agent2 = create_agent(model, tools=[tool2])
 
-supervisor = create_supervisor(
-    agents=[agent1, agent2],
+# Wrap each subagent as a tool the supervisor can call
+@tool("agent1", description="Delegate work to agent1")
+def call_agent1(query: str) -> str:
+    result = agent1.invoke({"messages": [{"role": "user", "content": query}]})
+    return result["messages"][-1].content
+
+@tool("agent2", description="Delegate work to agent2")
+def call_agent2(query: str) -> str:
+    result = agent2.invoke({"messages": [{"role": "user", "content": query}]})
+    return result["messages"][-1].content
+
+supervisor = create_agent(
     model=model,
-    prompt="You manage agent1 and agent2. Assign work appropriately."
-).compile()
+    tools=[call_agent1, call_agent2],
+    system_prompt="You manage agent1 and agent2. Assign work appropriately."
+)
 ```
 
-## Multi-Agent: Swarm
+## Multi-Agent: Handoffs (Command graph transfer)
 
 ```python
-from langgraph_swarm import create_swarm, create_handoff_tool
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
+from langchain.messages import AIMessage, ToolMessage
+from langchain.tools import tool, ToolRuntime
+from langgraph.types import Command
 
-handoff_to_b = create_handoff_tool(agent_name="agent_b", description="Transfer to B")
-handoff_to_a = create_handoff_tool(agent_name="agent_a", description="Transfer to A")
+@tool
+def transfer_to_b(runtime: ToolRuntime) -> Command:
+    """Transfer to agent B."""
+    last_ai = next(
+        m for m in reversed(runtime.state["messages"]) if isinstance(m, AIMessage)
+    )
+    transfer = ToolMessage(
+        content="Transferred to agent B", tool_call_id=runtime.tool_call_id
+    )
+    return Command(
+        goto="agent_b",
+        update={"active_agent": "agent_b", "messages": [last_ai, transfer]},
+        graph=Command.PARENT,
+    )
 
-agent_a = create_react_agent(model, tools=[tool1, handoff_to_b], name="agent_a")
-agent_b = create_react_agent(model, tools=[tool2, handoff_to_a], name="agent_b")
-
-swarm = create_swarm(
-    agents=[agent_a, agent_b],
-    default_active_agent="agent_a"
-).compile()
+agent_a = create_agent(model, tools=[tool1, transfer_to_b])
+agent_b = create_agent(model, tools=[tool2])
+# Wire agent_a / agent_b as nodes in a StateGraph that routes on active_agent.
 ```
 
 ## Streaming Modes
@@ -217,8 +238,8 @@ os.environ["OPENAI_API_KEY"] = "..."
 
 | Provider | Import | Model String |
 |----------|--------|--------------|
-| OpenAI | `from langchain_openai import ChatOpenAI` | `"gpt-4o"`, `"gpt-5"` |
-| Anthropic | `from langchain_anthropic import ChatAnthropic` | `"claude-sonnet-4-5-20250929"` |
+| Anthropic (recommended) | `from langchain_anthropic import ChatAnthropic` | `"claude-sonnet-4-6"` |
+| OpenAI | `from langchain_openai import ChatOpenAI` | `"gpt-5"` |
 | Azure | `from langchain_openai import AzureChatOpenAI` | - |
 | Google | `from langchain_google_genai import ChatGoogleGenerativeAI` | `"gemini-1.5-pro"` |
 | AWS | `from langchain_aws import ChatBedrock` | - |

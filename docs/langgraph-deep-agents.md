@@ -364,7 +364,7 @@ def handoff_node(state: State) -> Command[Literal["other_subgraph"]]:
 ```python
 from langgraph.graph import StateGraph, MessagesState, START, END
 from langchain.tools import tool
-from langchain_openai import ChatOpenAI
+from langchain.chat_models import init_chat_model
 
 @tool
 def search(query: str) -> str:
@@ -372,7 +372,7 @@ def search(query: str) -> str:
     return f"Results for: {query}"
 
 tools = [search]
-model = ChatOpenAI(model="gpt-4o").bind_tools(tools)
+model = init_chat_model("anthropic:claude-sonnet-4-6").bind_tools(tools)
 
 def call_model(state: MessagesState):
     messages = state["messages"]
@@ -618,9 +618,30 @@ builder.add_conditional_edges("expand", should_continue)
 
 ## Deep Agents
 
-### Overview
+> **Note:** "Deep Agents" is the official `deepagents` package — install with `pip install deepagents` and build with `from deepagents import create_deep_agent`. It is an agent harness over LangChain/LangGraph with built-in **planning**, a **virtual filesystem** for context management, **subagents** (the `task` tool), **skills**, and **long-term memory**. Reach for `create_deep_agent` when you want these capabilities out of the box. The architectures below are **custom LangGraph reasoning patterns** you can hand-build with `StateGraph` — they are not the `deepagents` package, though `deepagents` implements similar planning/subagent ideas for you.
 
-Deep Agents refers to advanced agent architectures that go beyond simple ReAct loops:
+```python
+# pip install -qU deepagents langchain-anthropic
+from deepagents import create_deep_agent
+
+def get_weather(city: str) -> str:
+    """Get weather for a given city."""
+    return f"It's always sunny in {city}!"
+
+agent = create_deep_agent(
+    model="anthropic:claude-sonnet-4-6",
+    tools=[get_weather],
+    system_prompt="You are a helpful assistant",
+)
+
+agent.invoke(
+    {"messages": [{"role": "user", "content": "what is the weather in sf"}]}
+)
+```
+
+### Custom LangGraph Reasoning Patterns
+
+Advanced agent architectures that go beyond simple ReAct loops (hand-built with `StateGraph`):
 
 1. **Plan-and-Solve**: Multi-step planning before execution
 2. **Reflection**: Self-evaluation and improvement loops

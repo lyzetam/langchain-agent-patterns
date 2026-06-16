@@ -31,9 +31,9 @@
 
 | Pattern | Coordination | Parallelism | Context Isolation | Best For |
 |---------|--------------|-------------|-------------------|----------|
-| **Supervisor** | Centralized | Yes (controlled) | Yes | Distributed teams, complex workflows |
-| **Swarm** | Decentralized | No (sequential) | No | Conversational, stateful interactions |
-| **Subagents** | Tool-based | Yes | Yes | Modular capabilities, distributed dev |
+| **Subagents** | Centralized (tool-based) | Yes | Yes | Distributed teams, modular capabilities, complex workflows |
+| **Handoffs** | Decentralized (state) | No (sequential) | No | Conversational, stateful interactions |
+| **Skills** | Procedural | Configurable | Configurable | Reusable expertise, repeatable procedures |
 | **Router** | Classifier | Yes | Partial | Simple delegation, cost optimization |
 | **Custom Workflow** | Programmatic | Configurable | Configurable | Specific business logic |
 
@@ -61,7 +61,7 @@ Thought → Action → Observation → Thought → Action → ... → Answer
 from langchain.agents import create_agent
 
 agent = create_agent(
-    model="gpt-4o",
+    model="anthropic:claude-sonnet-4-6",
     tools=[search, calculate],
     system_prompt="You are a helpful assistant."
 )
@@ -188,67 +188,111 @@ Execute #E1 → Execute #E2 → Execute #E3 → Solve
 
 ## Multi-Agent Patterns
 
-### 1. Supervisor Pattern
+### 1. Subagents (Agent-as-Tool) Pattern
 
 **Architecture**:
 ```
          User
           ↓
-      Supervisor
+     Main Agent
        /   |   \
-   Agent1 Agent2 Agent3
+   Sub1   Sub2  Sub3   (each exposed as a tool)
        \   |   /
-      Supervisor
+     Main Agent
           ↓
         Response
 ```
 
 **How It Works**:
-- Central supervisor coordinates all agents
-- Supervisor decides which agent to call
-- Agents report back to supervisor
-- Supervisor synthesizes final response
+- A main agent coordinates specialized subagents by calling them as tools
+- Main agent decides which subagent to invoke and what input to provide
+- Subagents run in isolation (clean context window), return results to the main agent
+- Main agent synthesizes the final response
 
 **Use When**:
 - Different teams maintain different agents
-- Need centralized control
+- Need centralized control with strong context isolation
 - Want to parallelize where possible
 
 **Example**: Travel booking with flight, hotel, and expense agents
 
+**Code**:
+```python
+from langchain.tools import tool
+from langchain.agents import create_agent
+
+# Create a subagent
+subagent = create_agent(model="anthropic:claude-sonnet-4-6", tools=[...])
+
+# Wrap it as a tool
+@tool("research", description="Research a topic and return findings")
+def call_research_agent(query: str):
+    result = subagent.invoke({"messages": [{"role": "user", "content": query}]})
+    return result["messages"][-1].content
+
+# Main agent with subagent as a tool
+main_agent = create_agent(model="anthropic:claude-sonnet-4-6", tools=[call_research_agent])
+```
+
 **Pros**:
 - Clear control flow
-- Easy to add/remove agents
-- Can parallelize
+- Strong context isolation, clean boundaries
+- Easy to add/remove agents; can parallelize
 
 **Cons**:
-- Single point of failure
-- Context grows with each handoff
-- Extra latency from routing
+- Single point of coordination
+- Context not shared between subagents
+- More LLM calls / extra overhead
 
 ---
 
-### 2. Swarm Pattern
+### 2. Handoffs Pattern
 
 **Architecture**:
 ```
 Agent A ←→ Agent B ←→ Agent C
   ↑_____________________|
-        (handoffs)
+        (handoffs via Command)
 ```
 
 **How It Works**:
-- Agents dynamically hand off to each other
-- Each agent can transfer to any other
-- System remembers last active agent
+- Agents dynamically hand off to each other by returning a `Command` that updates shared state
+- Each agent can transfer to any other; behavior changes based on a state variable (e.g. `active_agent`)
+- A handoff tool routes to the next agent using `Command(graph=Command.PARENT)`
 - No central coordinator
 
 **Use When**:
 - Conversational interfaces
-- Need to maintain user context
+- Need to maintain user context across turns
 - Agents should feel like one system
 
 **Example**: Customer support with triage, billing, and technical agents
+
+**Code**:
+```python
+from langchain.messages import AIMessage, ToolMessage
+from langchain.tools import tool, ToolRuntime
+from langgraph.types import Command
+
+@tool
+def transfer_to_sales(runtime: ToolRuntime) -> Command:
+    """Transfer to the sales agent."""
+    last_ai_message = next(
+        msg for msg in reversed(runtime.state["messages"]) if isinstance(msg, AIMessage)
+    )
+    transfer_message = ToolMessage(
+        content="Transferred to sales agent",
+        tool_call_id=runtime.tool_call_id,
+    )
+    return Command(
+        goto="sales_agent",
+        update={
+            "active_agent": "sales_agent",
+            "messages": [last_ai_message, transfer_message],
+        },
+        graph=Command.PARENT,
+    )
+```
 
 **Pros**:
 - Direct user interaction with specialists
@@ -262,38 +306,36 @@ Agent A ←→ Agent B ←→ Agent C
 
 ---
 
-### 3. Subagents as Tools
+### 3. Skills Pattern
 
 **Architecture**:
 ```
-Main Agent (with tools)
-    ├── Tool 1
-    ├── Tool 2
-    └── Subagent A (as tool)
-         ├── Tool A1
-         └── Tool A2
+Agent
+  ├── Skill 1 (procedure / expertise)
+  ├── Skill 2
+  └── Skill 3
 ```
 
 **How It Works**:
-- Subagents are exposed as tools to main agent
-- Main agent decides when to call subagent
-- Subagents run in isolation
-- Results return to main agent
+- Reusable, packaged expertise (procedures, instructions, tools) the agent loads on demand
+- Encapsulates a repeatable way of accomplishing a task
+- Keeps the base agent lean while making capabilities composable
 
 **Use When**:
-- Strong context isolation needed
-- Distributed development
-- Subagents are independent capabilities
+- You have repeatable procedures to package and reuse
+- Multiple agents should share the same expertise
+- You want capabilities that are composable and discoverable
+
+**Example**: A coding agent with skills for testing, deployment, and code review
 
 **Pros**:
-- Strong isolation
-- Can parallelize
-- Clean boundaries
+- Reusable across agents
+- Keeps base prompt lean
+- Composable and discoverable
 
 **Cons**:
-- Context not shared
-- More LLM calls
-- Extra overhead
+- Upfront authoring effort
+- Skill selection adds indirection
 
 ---
 
@@ -337,7 +379,7 @@ User → Router → Agent A
 
 ### Customer Support
 
-**Pattern**: Swarm or Supervisor
+**Pattern**: Handoffs or Subagents
 **Agents**:
 - Triage Agent
 - Billing Agent
@@ -390,7 +432,7 @@ User → Router → Agent A
 
 ### Travel Booking
 
-**Pattern**: Supervisor
+**Pattern**: Subagents
 **Agents**:
 - Flight Agent
 - Hotel Agent
@@ -398,8 +440,8 @@ User → Router → Agent A
 - Expense Calculator
 
 **Flow**:
-1. Supervisor parses user request
-2. Dispatches to relevant agents (can be parallel)
+1. Main agent parses user request
+2. Dispatches to relevant subagents (can be parallel)
 3. Collects results
 4. Presents options
 5. Handles booking confirmation
@@ -464,11 +506,13 @@ Start
   │
   ├── Multiple domains, need specialization? ──→ Multi-Agent
   │       │
-  │       ├── Conversational, stateful? ──→ Swarm
+  │       ├── Conversational, stateful? ──→ Handoffs
   │       │
-  │       ├── Need parallelism? ──→ Supervisor or Router
+  │       ├── Need parallelism + control? ──→ Subagents or Router
   │       │
   │       ├── Strong isolation needed? ──→ Subagents
+  │       │
+  │       ├── Reusable procedures? ──→ Skills
   │       │
   │       └── Simple classification? ──→ Router
   │
@@ -494,53 +538,52 @@ Start
    - Multiple → Multi-agent
 
 5. **Need to parallelize?**
-   - Yes → Supervisor, Subagents, Router
-   - No → Swarm
+   - Yes → Subagents, Router
+   - No → Handoffs
 
 6. **State important?**
-   - Yes → Swarm, Supervisor
+   - Yes → Handoffs
    - No → Router, Subagents
 
 ---
 
 ## Performance Comparison
 
+> Note: the comparisons below are qualitative (Low / Medium / High). Actual model calls, token usage, and latency vary widely by model, task, and prompt — measure with your own workload before optimizing.
+
 ### Single Agent: One-shot Task
 
 | Pattern | Model Calls | Token Usage | Latency | Best |
 |---------|-------------|-------------|---------|------|
-| ReAct | 2-3 | ~2K | Medium | ✅ General |
-| Plan-and-Execute | 2+ | ~1.5K | Higher | Multi-step |
-| Reflection | 4+ | ~3K | Higher | Quality |
-| ReWOO | 2 | ~1K | Lower | ✅ Search |
-| LATS | 10+ | ~8K | Highest | Optimization |
+| ReAct | Low | Medium | Medium | ✅ General |
+| Plan-and-Execute | Low | Low | Higher | Multi-step |
+| Reflection | High | High | Higher | Quality |
+| ReWOO | Low | Low | Lower | ✅ Search |
+| LATS | High | High | Highest | Optimization |
 
 ### Multi-Agent: One-shot Task
 
 | Pattern | Model Calls | Token Usage | Latency | Best |
 |---------|-------------|-------------|---------|------|
-| Supervisor | 4 | ~2K | Medium | ✅ Control |
-| Swarm | 3 | ~1.8K | Medium | ✅ Conversational |
-| Subagents | 5 | ~2.5K | Higher | Isolation |
-| Router | 3 | ~1.5K | Lower | ✅ Speed |
+| Subagents | Medium | Medium | Medium-Higher | ✅ Control / Isolation |
+| Handoffs | Medium | Medium | Medium | ✅ Conversational |
+| Router | Low | Low | Lower | ✅ Speed |
 
 ### Multi-Agent: Repeat Request
 
-| Pattern | Calls (Turn 1) | Calls (Turn 2) | Total | Best |
-|---------|----------------|----------------|-------|------|
-| Supervisor | 4 | 4 | 8 | - |
-| Swarm | 3 | 2 | 5 | ✅ Stateful |
-| Subagents | 5 | 5 | 10 | - |
-| Router | 3 | 3 | 6 | - |
+| Pattern | Calls (Turn 1) | Calls (Turn 2) | Best |
+|---------|----------------|----------------|------|
+| Subagents | Medium | Medium | - |
+| Handoffs | Medium | Low | ✅ Stateful |
+| Router | Low | Low | - |
 
 ### Multi-Agent: Multi-Domain (Parallel)
 
 | Pattern | Model Calls | Token Usage | Best |
 |---------|-------------|-------------|------|
-| Supervisor | 5 | ~9K | ✅ Parallel |
-| Swarm | 7+ | ~14K | - |
-| Subagents | 5 | ~9K | ✅ Isolation |
-| Router | 5 | ~9K | ✅ Simple |
+| Subagents | Medium | Medium | ✅ Parallel / Isolation |
+| Handoffs | High | High | - |
+| Router | Medium | Medium | ✅ Simple |
 
 ---
 
@@ -555,16 +598,17 @@ Start
 | High-quality outputs | Reflection |
 | Fast search tasks | ReWOO |
 | Optimal decision making | LATS |
-| Conversational multi-agent | Swarm |
-| Controlled parallel agents | Supervisor |
+| Conversational multi-agent | Handoffs |
+| Controlled parallel agents | Subagents |
 | Maximum parallelism | Router |
 | Strong isolation | Subagents |
+| Reusable packaged expertise | Skills |
 
 ### Recommendations by Experience
 
 **Beginners**:
 - Start with `create_agent` (ReAct)
-- Use prebuilt multi-agent (Supervisor, Swarm)
+- Use the built-in multi-agent patterns (Subagents, Handoffs)
 
 **Intermediate**:
 - Build custom LangGraph for specific flows

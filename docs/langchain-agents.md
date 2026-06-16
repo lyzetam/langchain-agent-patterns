@@ -64,7 +64,7 @@ def get_weather(city: str) -> str:
     return f"It's always sunny in {city}!"
 
 agent = create_agent(
-    model="claude-sonnet-4-5-20250929",  # or "gpt-5", etc.
+    model="anthropic:claude-sonnet-4-6",  # or "openai:gpt-5", etc.
     tools=[get_weather],
     system_prompt="You are a helpful assistant",
 )
@@ -128,7 +128,7 @@ Step 3 - Acting: Produce final answer
 from langchain.agents import create_agent
 
 agent = create_agent(
-    model="gpt-5",  # Model identifier or instance
+    model="anthropic:claude-sonnet-4-6",  # Model identifier or instance
     tools=[tool1, tool2],
     system_prompt="You are a helpful assistant"
 )
@@ -138,10 +138,10 @@ agent = create_agent(
 
 ```python
 from langchain.agents import create_agent
-from langchain_openai import ChatOpenAI
+from langchain.chat_models import init_chat_model
 
-model = ChatOpenAI(
-    model="gpt-5",
+model = init_chat_model(
+    "anthropic:claude-sonnet-4-6",
     temperature=0.1,
     max_tokens=1000,
     timeout=30
@@ -157,9 +157,10 @@ Use middleware with `@wrap_model_call` for runtime model selection:
 ```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse
+from langchain.chat_models import init_chat_model
 
-basic_model = ChatOpenAI(model="gpt-4o-mini")
-advanced_model = ChatOpenAI(model="gpt-4o")
+basic_model = init_chat_model("anthropic:claude-haiku-4-5")
+advanced_model = init_chat_model("anthropic:claude-sonnet-4-6")
 
 @wrap_model_call
 def dynamic_model_selection(request: ModelRequest, handler) -> ModelResponse:
@@ -204,7 +205,7 @@ def user_role_prompt(request: ModelRequest) -> str:
     return base_prompt
 
 agent = create_agent(
-    model="gpt-4o",
+    model="anthropic:claude-sonnet-4-6",
     tools=[web_search],
     middleware=[user_role_prompt],
     context_schema=Context
@@ -270,7 +271,7 @@ def handle_tool_errors(request, handler):
         )
 
 agent = create_agent(
-    model="gpt-4o",
+    model="anthropic:claude-sonnet-4-6",
     tools=[search, get_weather],
     middleware=[handle_tool_errors]
 )
@@ -338,15 +339,15 @@ When a single agent needs to specialize in multiple domains or manage many tools
 - Skills: 3 calls, ~15K tokens
 - Router: 5 calls, ~9K tokens ✅
 
-### Supervisor Pattern
+### Supervisor Pattern (Subagents)
 
-A central supervisor agent coordinates specialized agents:
+A central coordinator agent coordinates specialized subagents by calling them as tools:
 
 ```python
-from langgraph_supervisor import create_supervisor
-from langgraph.prebuilt import create_react_agent
+from langchain.tools import tool
+from langchain.agents import create_agent
 
-# Create specialized agents
+# Create specialized subagents
 def book_hotel(hotel_name: str):
     """Book a hotel"""
     return f"Successfully booked a stay at {hotel_name}."
@@ -355,26 +356,35 @@ def book_flight(from_airport: str, to_airport: str):
     """Book a flight"""
     return f"Successfully booked a flight from {from_airport} to {to_airport}."
 
-flight_assistant = create_react_agent(
-    model="openai:gpt-4o",
+flight_assistant = create_agent(
+    model="anthropic:claude-sonnet-4-6",
     tools=[book_flight],
-    prompt="You are a flight booking assistant",
-    name="flight_assistant"
+    system_prompt="You are a flight booking assistant",
 )
 
-hotel_assistant = create_react_agent(
-    model="openai:gpt-4o",
+hotel_assistant = create_agent(
+    model="anthropic:claude-sonnet-4-6",
     tools=[book_hotel],
-    prompt="You are a hotel booking assistant",
-    name="hotel_assistant"
+    system_prompt="You are a hotel booking assistant",
 )
 
-# Create supervisor
-supervisor = create_supervisor(
-    agents=[flight_assistant, hotel_assistant],
-    model=ChatOpenAI(model="gpt-4o"),
-    prompt="You manage a hotel booking assistant and a flight booking assistant. Assign work to them."
-).compile()
+# Wrap each subagent as a tool
+@tool("flight_assistant", description="Book flights between airports.")
+def call_flight_assistant(query: str) -> str:
+    result = flight_assistant.invoke({"messages": [{"role": "user", "content": query}]})
+    return result["messages"][-1].content
+
+@tool("hotel_assistant", description="Book hotel stays.")
+def call_hotel_assistant(query: str) -> str:
+    result = hotel_assistant.invoke({"messages": [{"role": "user", "content": query}]})
+    return result["messages"][-1].content
+
+# Coordinator agent calls subagents as tools
+supervisor = create_agent(
+    model="anthropic:claude-sonnet-4-6",
+    tools=[call_flight_assistant, call_hotel_assistant],
+    system_prompt="You manage a hotel booking assistant and a flight booking assistant. Assign work to them."
+)
 
 # Run
 for chunk in supervisor.stream({
@@ -386,44 +396,107 @@ for chunk in supervisor.stream({
     print(chunk)
 ```
 
-### Swarm Pattern
+### Swarm Pattern (Handoffs)
 
-Agents dynamically hand off control to each other:
+Agents dynamically hand off control to each other. Each agent is a node in a `StateGraph`; handoff tools return a `Command` that transfers control to another agent:
 
 ```python
-from langgraph_swarm import create_swarm, create_handoff_tool
-from langgraph.prebuilt import create_react_agent
+from typing import Literal
+from langchain.agents import AgentState, create_agent
+from langchain.messages import AIMessage, ToolMessage
+from langchain.tools import tool, ToolRuntime
+from langgraph.graph import StateGraph, START, END
+from langgraph.types import Command
+from typing_extensions import NotRequired
 
-# Create handoff tools
-transfer_to_hotel = create_handoff_tool(
-    agent_name="hotel_assistant",
-    description="Transfer user to the hotel-booking assistant."
-)
-transfer_to_flight = create_handoff_tool(
-    agent_name="flight_assistant",
-    description="Transfer user to the flight-booking assistant."
-)
+class MultiAgentState(AgentState):
+    active_agent: NotRequired[str]
+
+# Create handoff tools that return a Command
+@tool
+def transfer_to_hotel(runtime: ToolRuntime) -> Command:
+    """Transfer user to the hotel-booking assistant."""
+    last_ai_message = next(
+        msg for msg in reversed(runtime.state["messages"]) if isinstance(msg, AIMessage)
+    )
+    transfer_message = ToolMessage(
+        content="Transferred to hotel assistant",
+        tool_call_id=runtime.tool_call_id,
+    )
+    return Command(
+        goto="hotel_assistant",
+        update={
+            "active_agent": "hotel_assistant",
+            "messages": [last_ai_message, transfer_message],
+        },
+        graph=Command.PARENT,
+    )
+
+@tool
+def transfer_to_flight(runtime: ToolRuntime) -> Command:
+    """Transfer user to the flight-booking assistant."""
+    last_ai_message = next(
+        msg for msg in reversed(runtime.state["messages"]) if isinstance(msg, AIMessage)
+    )
+    transfer_message = ToolMessage(
+        content="Transferred to flight assistant",
+        tool_call_id=runtime.tool_call_id,
+    )
+    return Command(
+        goto="flight_assistant",
+        update={
+            "active_agent": "flight_assistant",
+            "messages": [last_ai_message, transfer_message],
+        },
+        graph=Command.PARENT,
+    )
 
 # Create agents with handoff tools
-flight_assistant = create_react_agent(
-    model="anthropic:claude-3-5-sonnet-latest",
+flight_assistant = create_agent(
+    model="anthropic:claude-sonnet-4-6",
     tools=[book_flight, transfer_to_hotel],
-    prompt="You are a flight booking assistant",
-    name="flight_assistant"
+    system_prompt="You are a flight booking assistant",
 )
 
-hotel_assistant = create_react_agent(
-    model="anthropic:claude-3-5-sonnet-latest",
+hotel_assistant = create_agent(
+    model="anthropic:claude-sonnet-4-6",
     tools=[book_hotel, transfer_to_flight],
-    prompt="You are a hotel booking assistant",
-    name="hotel_assistant"
+    system_prompt="You are a hotel booking assistant",
 )
 
-# Create swarm
-swarm = create_swarm(
-    agents=[flight_assistant, hotel_assistant],
-    default_active_agent="flight_assistant"
-).compile()
+def call_flight_assistant(state: MultiAgentState) -> Command:
+    return flight_assistant.invoke(state)
+
+def call_hotel_assistant(state: MultiAgentState) -> Command:
+    return hotel_assistant.invoke(state)
+
+def route_after_agent(
+    state: MultiAgentState,
+) -> Literal["flight_assistant", "hotel_assistant", "__end__"]:
+    """Route based on active_agent, or END if the agent finished without handoff."""
+    messages = state.get("messages", [])
+    if messages:
+        last_msg = messages[-1]
+        if isinstance(last_msg, AIMessage) and not last_msg.tool_calls:
+            return "__end__"
+    return state.get("active_agent") or "flight_assistant"
+
+def route_initial(
+    state: MultiAgentState,
+) -> Literal["flight_assistant", "hotel_assistant"]:
+    return state.get("active_agent") or "flight_assistant"
+
+builder = StateGraph(MultiAgentState)
+builder.add_node("flight_assistant", call_flight_assistant)
+builder.add_node("hotel_assistant", call_hotel_assistant)
+builder.add_conditional_edges(START, route_initial, ["flight_assistant", "hotel_assistant"])
+builder.add_conditional_edges(
+    "flight_assistant", route_after_agent, ["flight_assistant", "hotel_assistant", END]
+)
+builder.add_conditional_edges(
+    "hotel_assistant", route_after_agent, ["flight_assistant", "hotel_assistant", END]
+)
+swarm = builder.compile()
 
 # Run
 for chunk in swarm.stream({
@@ -483,7 +556,7 @@ checkpointer = InMemorySaver()
 
 # Compile agent with checkpointer
 agent = create_agent(
-    model="gpt-4o",
+    model="anthropic:claude-sonnet-4-6",
     tools=[get_weather],
     checkpointer=checkpointer
 )
@@ -641,10 +714,10 @@ Human-in-the-loop allows humans to inspect, interrupt, and approve agent steps.
 ### Using Interrupt Before/After
 
 ```python
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 
-agent = create_react_agent(
-    model="gpt-4o",
+agent = create_agent(
+    model="anthropic:claude-sonnet-4-6",
     tools=[search],
     interrupt_before=["tools"],  # Interrupt before tools execute
     # or
@@ -661,7 +734,7 @@ from langchain.agents.middleware import HumanInTheLoopMiddleware
 checkpointer = InMemorySaver()
 
 agent = create_agent(
-    model="gpt-4o",
+    model="anthropic:claude-sonnet-4-6",
     tools=[get_weather],
     middleware=[
         HumanInTheLoopMiddleware(interrupt_on={"get_weather": True}),
@@ -727,7 +800,7 @@ class ResponseSafety(BaseModel):
     """Evaluate a response as safe or unsafe."""
     evaluation: Literal["safe", "unsafe"]
 
-safety_model = init_chat_model("openai:gpt-4o")
+safety_model = init_chat_model("anthropic:claude-sonnet-4-6")
 
 @after_agent(can_jump_to=["end"])
 def safety_guardrail(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
@@ -753,7 +826,7 @@ def safety_guardrail(state: AgentState, runtime: Runtime) -> dict[str, Any] | No
     return None
 
 agent = create_agent(
-    model="gpt-4o",
+    model="anthropic:claude-sonnet-4-6",
     tools=[get_weather],
     middleware=[safety_guardrail],
 )
@@ -825,8 +898,7 @@ def update_instructions(state: State, store: BaseStore):
 - **LangGraph Documentation**: https://langchain-ai.github.io/langgraph
 - **LangSmith**: https://smith.langchain.com
 - **GitHub Repositories**:
-  - https://github.com/langchain-ai/langgraph-supervisor-py
-  - https://github.com/langchain-ai/langgraph-swarm-py
+  - https://github.com/langchain-ai/deepagents
 
 ---
 
