@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Local agent/project context (per workspace convention — not for the repo)
+CLAUDE.md
+
+# OS
+.DS_Store
