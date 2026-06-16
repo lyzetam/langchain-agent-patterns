@@ -5,6 +5,11 @@ __pycache__/
 .venv/
 venv/
 
+# Secrets / local env (keep .env.example tracked)
+.env
+.env.*
+!.env.example
+
 # Local agent/project context (per workspace convention — not for the repo)
 CLAUDE.md
 

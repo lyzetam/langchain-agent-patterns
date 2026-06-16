@@ -208,7 +208,7 @@ def transfer_to_sales(runtime: ToolRuntime) -> Command:
 
 ```
 Single agent, model + tools loop?             → create_agent          (basic_agent.py)
-Batteries-included (plan/memory/subagents)?   → Deep Agents           (deepagent_release_notes.py)
+Batteries-included (plan/memory/subagents)?   → Deep Agents           (release-notes-agent/)
 Explicit control flow / deterministic stages? → LangGraph             (langgraph_*.py)
 Multiple specialized agents?
   ├── Centralized coordinator                 → Subagents             (supervisor_multi_agent.py)
@@ -239,14 +239,15 @@ Multiple specialized agents?
 - **Code review** — security / style / tests via specialists (see `swarm_multi_agent.py`)
 - **Research assistant** — query planning, gathering, synthesis
 - **Travel booking** — flight / hotel / expense subagents (see `supervisor_multi_agent.py`)
-- **Release notes** — commit log → house-style changelog (see `deepagent_release_notes.py`)
+- **Lead lifecycle** — qualify → engage with per-lead memory (see `lead-lifecycle-agent/`)
+- **Release notes** — commit log → house-style changelog (see `release-notes-agent/`)
 
 ---
 
 ## 🎓 Learning path
 
 **Beginner** — read [`docs/quick-reference.md`](docs/quick-reference.md) → run `examples/basic_agent.py` → `examples/agent_with_memory.py`.
-**Intermediate** — read [`docs/langchain-agents.md`](docs/langchain-agents.md) → `examples/rag_agent.py` → `examples/deepagent_release_notes.py`.
+**Intermediate** — read [`docs/langchain-agents.md`](docs/langchain-agents.md) → `examples/rag_agent.py` → `examples/release-notes-agent/`.
 **Advanced** — read [`docs/patterns-and-use-cases.md`](docs/patterns-and-use-cases.md) → multi-agent examples → `examples/langgraph_lats.py` → design your own.
 
 ---

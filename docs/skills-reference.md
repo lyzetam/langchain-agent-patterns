@@ -58,7 +58,7 @@ Scaffolds an agent on LangChain's official **Deep Agents** framework (`deepagent
 **Wires up only what's needed:** custom tools + MCP, subagents (dict or `CompiledSubAgent`), backends (State / Filesystem / LocalShell / Store / Composite + sandboxes), human-in-the-loop (`interrupt_on` + checkpointer), long-term memory (namespaced `StoreBackend`), skills (on-demand `SKILL.md`), structured output, streaming, custom middleware. Default model `anthropic:claude-sonnet-4-6`.
 
 **Example input:** "A research deep agent that plans, delegates to a search subagent, and writes a report"
-**Runnable example:** `examples/deepagent_release_notes.py` (planning + on-demand skill).
+**Runnable examples:** `examples/release-notes-agent/` (planning + on-demand skill) and `examples/lead-lifecycle-agent/` (workflow + memory + learning loop).
 
 ---
 

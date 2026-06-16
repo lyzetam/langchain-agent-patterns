@@ -1,4 +1,4 @@
-# Sample output — `deepagent_release_notes.py`
+# Sample output — `release-notes-agent`
 
 Captured from live runs against `deepagents 0.4.2` / `langchain 1.2.x` with
 `model="anthropic:claude-sonnet-4-6"`. Model output varies run to run; these are
@@ -10,7 +10,7 @@ representative.
 
 ```bash
 export ANTHROPIC_API_KEY=...
-python deepagent_release_notes.py
+python agent.py
 ```
 
 The agent calls `get_recent_commits` (returns the bundled `SAMPLE_COMMITS`), reads the
@@ -43,7 +43,7 @@ that drop the raw `feat:`/scope prefixes.
 ## Mode 2 — against a real repo (`--repo`)
 
 ```bash
-python deepagent_release_notes.py --repo /path/to/repo --version 0.1.0
+python agent.py --repo /path/to/repo --version 0.1.0
 ```
 
 Run against this repository's actual two-commit history
