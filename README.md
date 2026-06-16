@@ -44,12 +44,19 @@
 - ✅ ReWOO (Reasoning Without Observation)
 - ✅ LATS (Language Agent Tree Search)
 
-### Multi-Agent Systems
-- ✅ Supervisor Pattern
-- ✅ Swarm Pattern
-- ✅ Subagents as Tools
-- ✅ Router Pattern
-- ✅ Custom Workflows
+### Multi-Agent Systems (current docs: 5 patterns)
+- ✅ Subagents (agent-as-tool)
+- ✅ Handoffs (control transfer via `Command`)
+- ✅ Skills (on-demand expertise)
+- ✅ Router (classify → dispatch)
+- ✅ Custom Workflows (LangGraph)
+
+### Deep Agents (`deepagents` package)
+- ✅ `create_deep_agent` harness
+- ✅ Built-in planning (`write_todos`)
+- ✅ Virtual filesystem & context management
+- ✅ Subagents & skills (on-demand `SKILL.md`)
+- ✅ Human-in-the-loop & long-term memory
 
 ### LangSmith
 - ✅ Automatic tracing
@@ -81,10 +88,15 @@
 ### Multi-Agent Examples
 | File | Pattern | Description |
 |------|---------|-------------|
-| `examples/supervisor_multi_agent.py` | Supervisor | Travel booking system |
-| `examples/swarm_multi_agent.py` | Swarm | Code review specialists |
+| `examples/supervisor_multi_agent.py` | Subagents (agent-as-tool) | Travel booking system |
+| `examples/swarm_multi_agent.py` | Handoffs | Code review specialists |
 
-### Total Examples: 10 production-ready implementations
+### Deep Agents Examples
+| File | Pattern | Description |
+|------|---------|-------------|
+| `examples/deepagent_release_notes.py` | Deep Agents (`create_deep_agent`) | Release-notes writer using planning + an on-demand SKILL.md |
+
+### Total Examples: 11 production-ready implementations
 
 ---
 
@@ -106,10 +118,11 @@ Single Task?
 │   └── Optimize decisions? ───────→ LATS
 │
 └── Multiple Domains?
-    ├── Conversational? ───────────→ Swarm
-    ├── Need parallelism? ─────────→ Supervisor
-    ├── Strong isolation? ─────────→ Subagents
-    └── Simple routing? ───────────→ Router
+    ├── Control passes between peers? ─→ Handoffs
+    ├── Centralized coordinator? ──────→ Subagents
+    ├── One agent, swap expertise? ────→ Skills
+    ├── Classify then dispatch? ───────→ Router
+    └── Bespoke pipeline? ─────────────→ Custom workflow
 ```
 
 ### Performance Quick Reference
@@ -121,10 +134,10 @@ Single Task?
 | Reflection | Higher | Higher | No | Quality |
 | ReWOO | Lower | Lower | No | Search |
 | LATS | Highest | Highest | Yes | Optimization |
-| Supervisor | Medium | Medium | Yes | Control |
-| Swarm | Medium | Medium | No | Conversations |
-| Subagents | Higher | Medium | Yes | Isolation |
-| Router | Low | Low | Yes | Speed |
+| Subagents | Higher | Medium | Yes | Centralized control, isolation |
+| Handoffs | Medium | Medium | No | Peer control transfer |
+| Router | Low | Low | Yes | Classify + parallel dispatch |
+| Deep Agents | Medium–Higher | Higher | Yes | Planning + memory + subagents |
 
 ---
 
@@ -187,8 +200,8 @@ pip install -U langchain "langchain[openai]"
 # For LangGraph
 pip install -U langgraph
 
-# For multi-agent systems
-pip install langgraph-supervisor langgraph-swarm
+# For Deep Agents (create_deep_agent)
+pip install -U deepagents
 
 # For persistence
 pip install langgraph-checkpoint-sqlite  # or postgres
@@ -220,7 +233,7 @@ def search(query: str) -> str:
     return f"Results: {query}"
 
 agent = create_agent(
-    model="gpt-4o",
+    model="anthropic:claude-sonnet-4-6",
     tools=[search],
     system_prompt="You are a helpful assistant."
 )
@@ -273,8 +286,8 @@ result = agent.invoke({
 ### GitHub Repositories
 - **LangChain**: https://github.com/langchain-ai/langchain
 - **LangGraph**: https://github.com/langchain-ai/langgraph
-- **LangGraph Supervisor**: https://github.com/langchain-ai/langgraph-supervisor-py
-- **LangGraph Swarm**: https://github.com/langchain-ai/langgraph-swarm-py
+- **Deep Agents**: https://github.com/langchain-ai/deepagents
+- **Docs (current)**: https://docs.langchain.com/oss/python
 
 ### Papers & Research
 - **ReAct**: Reasoning + Acting (Yao et al., 2022)
@@ -299,8 +312,11 @@ agents/
     ├── agent_with_memory.py                    # Memory & persistence
     ├── streaming_agent.py                      # Real-time streaming
     ├── rag_agent.py                            # RAG implementation
-    ├── supervisor_multi_agent.py               # Supervisor pattern
-    ├── swarm_multi_agent.py                    # Swarm pattern
+    ├── supervisor_multi_agent.py               # Subagents (agent-as-tool)
+    ├── swarm_multi_agent.py                    # Handoffs pattern
+    ├── deepagent_release_notes.py              # Deep Agents (create_deep_agent) + skills
+    ├── skills/
+    │   └── release-notes/SKILL.md              # On-demand skill for the deep agent
     ├── langgraph_plan_and_execute.py           # Plan-and-Execute
     ├── langgraph_reflection.py                 # Reflection pattern
     ├── langgraph_rewoo.py                      # ReWOO pattern
@@ -381,8 +397,8 @@ Documentation compiled from official LangChain sources for educational purposes.
 
 ---
 
-**Last Updated**: 2026-02-24  
+**Last Updated**: 2026-06-16  
 **Total Documentation**: ~65KB across 4 comprehensive guides  
-**Total Examples**: 10 production-ready implementations  
+**Total Examples**: 11 production-ready implementations  
 
 *Build better agents with LangChain! 🚀*
