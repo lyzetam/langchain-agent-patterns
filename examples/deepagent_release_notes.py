@@ -13,16 +13,21 @@ This one app exercises the core deep-agent capabilities:
                       house format; the agent reads it only when relevant
   - Virtual FS      : the skill file is loaded into the agent's filesystem state
 
-Run:
-    export ANTHROPIC_API_KEY=...        # or set DEEP_AGENT_MODEL for another provider
+Run against the bundled sample commits:
+    export ANTHROPIC_API_KEY=...            # or DEEP_AGENT_MODEL for another provider
     python deepagent_release_notes.py
+
+Run against a real git repo:
+    python deepagent_release_notes.py --repo /path/to/repo --version 1.2.0
 
 Verified locally against deepagents 0.4.2 / langchain 1.2.x.
 """
 
 from __future__ import annotations
 
+import argparse
 import os
+import subprocess
 from pathlib import Path
 
 from deepagents import create_deep_agent
@@ -36,6 +41,19 @@ MODEL = os.environ.get("DEEP_AGENT_MODEL", "anthropic:claude-sonnet-4-6")
 # backend can't read disk, so we load the file and inject it into the agent's
 # virtual filesystem under /skills/ via the invoke `files` payload.
 SKILLS_DIR = Path(__file__).parent / "skills"
+
+# Set by main() when --repo is passed; None means use the bundled sample commits.
+_REPO_PATH: str | None = None
+
+SAMPLE_COMMITS = [
+    "feat(auth): add passwordless email magic-link login",
+    "feat(dashboard): show per-project token usage charts",
+    "fix(api): correct timezone offset in scheduled-report timestamps",
+    "fix(ui): stop the sidebar from collapsing on iPad landscape",
+    "refactor(core): extract retry logic into a shared helper",
+    "chore(deps): bump langgraph to the latest 1.x",
+    "perf(search): cache embeddings to cut query latency ~40%",
+]
 
 
 def load_skill_files() -> dict[str, object]:
@@ -52,17 +70,16 @@ def load_skill_files() -> dict[str, object]:
 
 @tool
 def get_recent_commits() -> list[str]:
-    """Return the raw conventional-commit messages since the last release."""
-    # In a real app this would shell out to `git log` or call the GitHub API.
-    return [
-        "feat(auth): add passwordless email magic-link login",
-        "feat(dashboard): show per-project token usage charts",
-        "fix(api): correct timezone offset in scheduled-report timestamps",
-        "fix(ui): stop the sidebar from collapsing on iPad landscape",
-        "refactor(core): extract retry logic into a shared helper",
-        "chore(deps): bump langgraph to the latest 1.x",
-        "perf(search): cache embeddings to cut query latency ~40%",
-    ]
+    """Return the conventional-commit messages since the last release."""
+    if _REPO_PATH:
+        # Real mode: read the actual commit log from the target repo.
+        out = subprocess.check_output(
+            ["git", "-C", _REPO_PATH, "log", "--pretty=format:%s", "--reverse"],
+            text=True,
+        )
+        return [line for line in out.splitlines() if line.strip()]
+    # Demo mode: bundled sample commits (no git required).
+    return SAMPLE_COMMITS
 
 
 # ============ Agent ============
@@ -82,6 +99,22 @@ def build_agent():
 
 
 def main() -> None:
+    global _REPO_PATH
+
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument(
+        "--repo",
+        metavar="PATH",
+        help="Path to a git repo; reads its real commit log. Omit to use bundled sample commits.",
+    )
+    parser.add_argument(
+        "--version",
+        default="2.4.0",
+        help="Version label for the release notes (default: 2.4.0).",
+    )
+    args = parser.parse_args()
+    _REPO_PATH = args.repo
+
     if not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("DEEP_AGENT_MODEL")):
         raise SystemExit(
             "Set ANTHROPIC_API_KEY (or DEEP_AGENT_MODEL for another provider) first."
@@ -91,7 +124,7 @@ def main() -> None:
     result = agent.invoke(
         {
             "messages": [
-                {"role": "user", "content": "Write the release notes for version 2.4.0."}
+                {"role": "user", "content": f"Write the release notes for version {args.version}."}
             ],
             "files": load_skill_files(),
         },

@@ -1,227 +1,63 @@
-# LangChain Agents - Complete Documentation
+# LangChain Agent Patterns
 
-> **Comprehensive documentation and examples for building production-grade AI agents with LangChain, LangGraph, LangSmith, and Deep Agents.**
+> Runnable examples and reference docs for building agents with **LangChain** (`create_agent`), **LangGraph** (StateGraph / Functional API), and **Deep Agents** (`create_deep_agent`) — current API as of June 2026.
 
----
-
-## 📚 Documentation Files
-
-### Core Documentation
-
-| File | Description | Size |
-|------|-------------|------|
-| `langchain-agents-documentation.md` | Complete LangChain agent guide | 22KB |
-| `langchain-quick-reference.md` | Quick reference cheat sheet | 6KB |
-| `langgraph-deep-agents-documentation.md` | LangGraph & Deep Agents | 24KB |
-| `langchain-patterns-use-cases.md` | Patterns comparison & use cases | 13KB |
-
-### Total Documentation: ~65KB of comprehensive guides
-
----
-
-## 🎯 What's Covered
-
-### LangChain Agents
-- ✅ Basic agent creation with `create_agent`
-- ✅ Tool definition and management
-- ✅ Memory & persistence (short-term & long-term)
-- ✅ Streaming & real-time updates
-- ✅ Human-in-the-loop patterns
-- ✅ Middleware system
-
-### LangGraph
-- ✅ StateGraph API
-- ✅ Nodes & Edges
-- ✅ Conditional routing
-- ✅ Map-Reduce with Send
-- ✅ Command for dynamic control
-- ✅ Subgraphs & parent navigation
-
-### Deep Agents & Advanced Patterns
-- ✅ ReAct (Reasoning + Acting)
-- ✅ Plan-and-Execute
-- ✅ Reflection & Self-Improvement
-- ✅ ReWOO (Reasoning Without Observation)
-- ✅ LATS (Language Agent Tree Search)
-
-### Multi-Agent Systems (current docs: 5 patterns)
-- ✅ Subagents (agent-as-tool)
-- ✅ Handoffs (control transfer via `Command`)
-- ✅ Skills (on-demand expertise)
-- ✅ Router (classify → dispatch)
-- ✅ Custom Workflows (LangGraph)
-
-### Deep Agents (`deepagents` package)
-- ✅ `create_deep_agent` harness
-- ✅ Built-in planning (`write_todos`)
-- ✅ Virtual filesystem & context management
-- ✅ Subagents & skills (on-demand `SKILL.md`)
-- ✅ Human-in-the-loop & long-term memory
-
-### LangSmith
-- ✅ Automatic tracing
-- ✅ Manual instrumentation
-- ✅ Evaluation (offline & online)
-- ✅ Datasets & experiments
-- ✅ Human annotation queues
-
----
-
-## 💻 Example Files
-
-### Basic Examples
-| File | Pattern | Description |
-|------|---------|-------------|
-| `examples/basic_agent.py` | ReAct | Simple agent with tools |
-| `examples/agent_with_memory.py` | ReAct + Memory | Conversational agent with checkpoints |
-| `examples/streaming_agent.py` | ReAct + Streaming | Real-time progress updates |
-| `examples/rag_agent.py` | RAG + Agent | Retrieval-augmented generation |
-
-### Advanced Examples
-| File | Pattern | Description |
-|------|---------|-------------|
-| `examples/langgraph_plan_and_execute.py` | Plan-and-Execute | Multi-step planning agent |
-| `examples/langgraph_reflection.py` | Reflection | Self-improving essay writer |
-| `examples/langgraph_rewoo.py` | ReWOO | Efficient search agent |
-| `examples/langgraph_lats.py` | LATS | Tree search reasoning |
-
-### Multi-Agent Examples
-| File | Pattern | Description |
-|------|---------|-------------|
-| `examples/supervisor_multi_agent.py` | Subagents (agent-as-tool) | Travel booking system |
-| `examples/swarm_multi_agent.py` | Handoffs | Code review specialists |
-
-### Deep Agents Examples
-| File | Pattern | Description |
-|------|---------|-------------|
-| `examples/deepagent_release_notes.py` | Deep Agents (`create_deep_agent`) | Release-notes writer using planning + an on-demand SKILL.md |
-
-### Total Examples: 11 production-ready implementations
-
----
-
-## 🏗️ Architecture Decision Guide
-
-### When to Use Each Pattern
+## Repository layout
 
 ```
-┌────────────────────────────────────────────────────────────────┐
-│                    AGENT PATTERN SELECTION                      │
-└────────────────────────────────────────────────────────────────┘
-
-Single Task?
-├── Yes
-│   ├── Variable steps? ───────────→ ReAct
-│   ├── Can plan ahead? ───────────→ Plan-and-Execute
-│   ├── Quality critical? ─────────→ Reflection
-│   ├── Search-heavy? ─────────────→ ReWOO
-│   └── Optimize decisions? ───────→ LATS
-│
-└── Multiple Domains?
-    ├── Control passes between peers? ─→ Handoffs
-    ├── Centralized coordinator? ──────→ Subagents
-    ├── One agent, swap expertise? ────→ Skills
-    ├── Classify then dispatch? ───────→ Router
-    └── Bespoke pipeline? ─────────────→ Custom workflow
+.
+├── README.md                 # this file
+├── docs/                     # reference documentation (no code)
+│   ├── langchain-agents.md
+│   ├── langgraph-deep-agents.md
+│   ├── patterns-and-use-cases.md
+│   ├── quick-reference.md
+│   ├── reference-card.md
+│   └── skills-reference.md
+└── examples/                 # runnable code
+    ├── README.md             # examples index
+    ├── outputs/              # captured sample outputs
+    ├── skills/               # on-demand SKILL.md files used by the deep agent
+    └── *.py                  # one file per pattern
 ```
 
-### Performance Quick Reference
+Documentation lives in [`docs/`](docs/); runnable code lives in [`examples/`](examples/); captured sample outputs live in [`examples/outputs/`](examples/outputs/).
 
-| Pattern | Latency | Tokens | Parallel | Best For |
-|---------|---------|--------|----------|----------|
-| ReAct | Medium | Medium | No | General use |
-| Plan-and-Execute | Higher | Lower | No | Multi-step |
-| Reflection | Higher | Higher | No | Quality |
-| ReWOO | Lower | Lower | No | Search |
-| LATS | Highest | Highest | Yes | Optimization |
-| Subagents | Higher | Medium | Yes | Centralized control, isolation |
-| Handoffs | Medium | Medium | No | Peer control transfer |
-| Router | Low | Low | Yes | Classify + parallel dispatch |
-| Deep Agents | Medium–Higher | Higher | Yes | Planning + memory + subagents |
+## Documentation
 
----
+| File | Covers |
+|------|--------|
+| [`docs/quick-reference.md`](docs/quick-reference.md) | Cheat sheet — fastest way in |
+| [`docs/langchain-agents.md`](docs/langchain-agents.md) | `create_agent`, tools, memory, streaming, middleware |
+| [`docs/langgraph-deep-agents.md`](docs/langgraph-deep-agents.md) | StateGraph API, nodes/edges, Deep Agents |
+| [`docs/patterns-and-use-cases.md`](docs/patterns-and-use-cases.md) | Pattern comparison & use cases |
+| [`docs/skills-reference.md`](docs/skills-reference.md) | The `/`-command scaffolders behind these examples |
+| [`docs/reference-card.md`](docs/reference-card.md) | One-page reference card |
 
-## 📖 Key Concepts
+## Examples
 
-### State Management
+See [`examples/README.md`](examples/README.md) for the full index. Highlights:
 
-```python
-# Short-term memory (per conversation)
-from langgraph.checkpoint.memory import InMemorySaver
-checkpointer = InMemorySaver()
+| File | Pattern |
+|------|---------|
+| `examples/basic_agent.py` | Single agent (ReAct) with tools |
+| `examples/agent_with_memory.py` | Agent + checkpointer memory |
+| `examples/rag_agent.py` | Retrieval-augmented agent |
+| `examples/supervisor_multi_agent.py` | Multi-agent — Subagents (agent-as-tool) |
+| `examples/swarm_multi_agent.py` | Multi-agent — Handoffs (`Command.PARENT`) |
+| `examples/deepagent_release_notes.py` | **Deep Agents** — planning + on-demand skill |
+| `examples/langgraph_{plan_and_execute,reflection,rewoo,lats}.py` | Custom LangGraph reasoning patterns |
 
-# Long-term memory (across conversations)
-from langgraph.store.memory import InMemoryStore
-store = InMemoryStore()
+**Sample outputs** from real runs are in [`examples/outputs/`](examples/outputs/) — e.g. [`deepagent_release_notes.md`](examples/outputs/deepagent_release_notes.md).
 
-# Compile with both
-graph.compile(checkpointer=checkpointer, store=store)
-```
-
-### Streaming
-
-```python
-# Stream agent progress
-for chunk in agent.stream(input, stream_mode="updates"):
-    print(chunk)
-
-# Stream LLM tokens
-for token, metadata in agent.stream(input, stream_mode="messages"):
-    print(token.content, end="")
-
-# Multiple modes
-for mode, chunk in agent.stream(input, stream_mode=["updates", "custom"]):
-    print(f"{mode}: {chunk}")
-```
-
-### Multi-Agent Handoffs
-
-```python
-from langgraph.types import Command
-
-def agent_a(state) -> Command[Literal["agent_b"]]:
-    return Command(
-        update={"messages": [response]},
-        goto="agent_b",
-        graph=Command.PARENT
-    )
-```
-
----
-
-## 🚀 Getting Started
-
-### Installation
+## Quick start
 
 ```bash
-# Basic installation
-pip install -U langchain "langchain[openai]"
+pip install -U langchain "langchain[anthropic]" langgraph   # core
+pip install -U deepagents                                   # for the Deep Agents example
 
-# For LangGraph
-pip install -U langgraph
-
-# For Deep Agents (create_deep_agent)
-pip install -U deepagents
-
-# For persistence
-pip install langgraph-checkpoint-sqlite  # or postgres
+export ANTHROPIC_API_KEY=...        # or OPENAI_API_KEY / GOOGLE_API_KEY, etc.
 ```
-
-### Environment Setup
-
-```bash
-# Required for any provider
-export OPENAI_API_KEY="..."
-# or
-export ANTHROPIC_API_KEY="..."
-
-# For LangSmith tracing
-export LANGSMITH_TRACING=true
-export LANGSMITH_API_KEY="..."
-export LANGSMITH_PROJECT="my-project"
-```
-
-### Quick Start
 
 ```python
 from langchain.agents import create_agent
@@ -235,170 +71,40 @@ def search(query: str) -> str:
 agent = create_agent(
     model="anthropic:claude-sonnet-4-6",
     tools=[search],
-    system_prompt="You are a helpful assistant."
+    system_prompt="You are a helpful assistant.",
 )
-
-result = agent.invoke({
-    "messages": [{"role": "user", "content": "Hello!"}]
-})
+print(agent.invoke({"messages": [{"role": "user", "content": "Hello!"}]})["messages"][-1].content)
 ```
 
----
+Run the Deep Agents sample against its bundled commits, or against any real repo:
 
-## 📊 Use Cases Covered
-
-### Customer Support
-- Triage → Specialist → Resolution
-- Human escalation
-- Conversation memory
-
-### Code Generation
-- Requirements → Code → Test → Fix
-- Iterative improvement
-- Multi-language support
-
-### Research Assistant
-- Query planning
-- Information gathering
-- Synthesis & verification
-
-### Travel Booking
-- Flight search
-- Hotel booking
-- Expense calculation
-- Parallel execution
-
-### Content Creation
-- Outline generation
-- Content writing
-- Review & editing
-- SEO optimization
-
----
-
-## 🔗 Resources
-
-### Official Documentation
-- **LangChain**: https://python.langchain.com
-- **LangGraph**: https://langchain-ai.github.io/langgraph
-- **LangSmith**: https://docs.langchain.com/langsmith
-
-### GitHub Repositories
-- **LangChain**: https://github.com/langchain-ai/langchain
-- **LangGraph**: https://github.com/langchain-ai/langgraph
-- **Deep Agents**: https://github.com/langchain-ai/deepagents
-- **Docs (current)**: https://docs.langchain.com/oss/python
-
-### Papers & Research
-- **ReAct**: Reasoning + Acting (Yao et al., 2022)
-- **Plan-and-Solve**: Multi-step planning
-- **Reflexion**: Self-reflective agents (Shinn et al., 2023)
-- **ReWOO**: Reasoning Without Observation (Xu et al., 2023)
-- **LATS**: Language Agent Tree Search (Zhou et al., 2023)
-
----
-
-## 📁 Repository Structure
-
-```
-agents/
-├── README.md                                    # This file
-├── langchain-agents-documentation.md           # Complete LangChain guide
-├── langchain-quick-reference.md                # Quick cheat sheet
-├── langgraph-deep-agents-documentation.md      # LangGraph & Deep Agents
-├── langchain-patterns-use-cases.md             # Patterns comparison
-└── examples/
-    ├── basic_agent.py                          # Basic ReAct agent
-    ├── agent_with_memory.py                    # Memory & persistence
-    ├── streaming_agent.py                      # Real-time streaming
-    ├── rag_agent.py                            # RAG implementation
-    ├── supervisor_multi_agent.py               # Subagents (agent-as-tool)
-    ├── swarm_multi_agent.py                    # Handoffs pattern
-    ├── deepagent_release_notes.py              # Deep Agents (create_deep_agent) + skills
-    ├── skills/
-    │   └── release-notes/SKILL.md              # On-demand skill for the deep agent
-    ├── langgraph_plan_and_execute.py           # Plan-and-Execute
-    ├── langgraph_reflection.py                 # Reflection pattern
-    ├── langgraph_rewoo.py                      # ReWOO pattern
-    └── langgraph_lats.py                       # LATS pattern
+```bash
+cd examples
+python deepagent_release_notes.py                              # bundled sample commits
+python deepagent_release_notes.py --repo /path/to/repo --version 1.2.0
 ```
 
----
+## Choosing an approach
 
-## 🎓 Learning Path
+```
+Single agent, model + tools loop?            → create_agent          (basic_agent.py)
+Batteries-included (plan/memory/subagents)?  → Deep Agents           (deepagent_release_notes.py)
+Explicit control flow / deterministic stages?→ LangGraph             (langgraph_*.py)
+Multiple specialized agents?
+  ├── Centralized coordinator                → Subagents             (supervisor_multi_agent.py)
+  ├── Peer control transfer                  → Handoffs              (swarm_multi_agent.py)
+  ├── Classify then dispatch                 → Router
+  └── Bespoke pipeline                        → Custom workflow
+```
 
-### Beginner
-1. Read `langchain-quick-reference.md`
-2. Run `examples/basic_agent.py`
-3. Try `examples/agent_with_memory.py`
-4. Add your own tools
+## Version compatibility
 
-### Intermediate
-1. Read `langchain-agents-documentation.md`
-2. Implement `examples/rag_agent.py`
-3. Study `langgraph-deep-agents-documentation.md`
-4. Build `langgraph_plan_and_execute.py`
+| Package | Version |
+|---------|---------|
+| langchain | 1.x |
+| langgraph | 1.x |
+| deepagents | 0.4.x (examples verified on 0.4.2) |
 
-### Advanced
-1. Read `langchain-patterns-use-cases.md`
-2. Implement multi-agent systems
-3. Study `langgraph_lats.py`
-4. Design custom architectures
+## License
 
----
-
-## 🛠️ Best Practices
-
-### Tool Design
-- Clear, specific descriptions
-- Include examples in docstrings
-- Use `response_format="content_and_artifact"` for complex outputs
-
-### State Management
-- Use `add_messages` reducer for conversation history
-- Keep state minimal
-- Use private state channels for internal data
-
-### Multi-Agent
-- Start simple (single agent)
-- Split when complexity grows
-- Choose pattern based on coordination needs
-
-### Production
-- Always use checkpointers
-- Enable LangSmith tracing
-- Set recursion limits
-- Handle errors gracefully
-
----
-
-## 📈 Version Compatibility
-
-| Package | Version | Notes |
-|---------|---------|-------|
-| LangChain | 1.0+ | Major release with simplified API |
-| LangGraph | 1.0+ | Stable for production |
-| LangSmith | Latest | Cloud & self-hosted options |
-
----
-
-## 🤝 Contributing
-
-This is a documentation collection. To update:
-1. Edit relevant `.md` files
-2. Test example code
-3. Update this README
-
----
-
-## 📝 License
-
-Documentation compiled from official LangChain sources for educational purposes.
-
----
-
-**Last Updated**: 2026-06-16  
-**Total Documentation**: ~65KB across 4 comprehensive guides  
-**Total Examples**: 11 production-ready implementations  
-
-*Build better agents with LangChain! 🚀*
+Compiled from official LangChain sources for educational use.
