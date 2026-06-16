@@ -18,6 +18,7 @@ export ANTHROPIC_API_KEY=...
 | [`release-notes-agent/`](release-notes-agent/) | Deep Agents (`create_deep_agent`) | Commit log → house-style release notes. Planning + on-disk skill via `FilesystemBackend`. CLI + `langgraph.json`. **Ours.** |
 | [`deep-research-agent/`](deep-research-agent/) | Deep Agents | Multi-step web research: orchestrator + parallel `research-agent` subagents, `tavily_search` + `think_tool`. **Port of `langchain-ai/deepagents` (MIT)** — see its `ATTRIBUTION.md`. |
 | [`text-to-sql-agent/`](text-to-sql-agent/) | Deep Agents | NL → SQL on the Chinook DB: planning + skills + `AGENTS.md` memory + `FilesystemBackend`. **Port of `langchain-ai/deepagents` (MIT)** — see its `ATTRIBUTION.md`. |
+| [`lead-lifecycle-agent/`](lead-lifecycle-agent/) | Deep Agent + LangGraph workflow | Lead-qualification Deep Agent (per-lead memory + BANT skill + tools + learning loop) chained to an engagement agent. Container-deployable (`Dockerfile` + `langgraph.json`); Supabase/Postgres memory via env. **Ours.** |
 
 Each folder has its own README with setup, run, and deploy steps.
 

@@ -1,0 +1,23 @@
+[project]
+name = "lead-lifecycle-agent"
+version = "0.1.0"
+description = "Deployable LangGraph workflow: a lead-qualification Deep Agent (with per-lead memory + skills) chained to an engagement agent."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "deepagents>=0.4,<0.5",
+    "langchain>=1.0,<2.0",
+    "langchain-anthropic>=0.3",
+    "langgraph>=1.0,<2.0",
+]
+
+[project.optional-dependencies]
+# Supabase / Postgres long-term memory (set DATABASE_URL to enable)
+postgres = ["langgraph-checkpoint-postgres>=2.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]

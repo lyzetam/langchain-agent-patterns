@@ -19,10 +19,11 @@
 │   └── skills-reference.md
 └── examples/                 # runnable code
     ├── README.md             # examples index
-    ├── release-notes-agent/  # deployable Deep Agent (ours)
-    ├── deep-research-agent/   # deployable Deep Agent (port, MIT)
-    ├── text-to-sql-agent/     # deployable Deep Agent (port, MIT)
-    └── *.py                  # single-file pattern demos
+    ├── release-notes-agent/   # deployable Deep Agent (ours)
+    ├── lead-lifecycle-agent/  # deployable Deep Agent + LangGraph workflow (ours)
+    ├── deep-research-agent/    # deployable Deep Agent (port, MIT)
+    ├── text-to-sql-agent/      # deployable Deep Agent (port, MIT)
+    └── *.py                   # single-file pattern demos
 ```
 
 Documentation lives in [`docs/`](docs/); runnable code lives in [`examples/`](examples/). The three **deployable agent folders** are self-contained — copy one out and run/deploy it on its own.
@@ -93,6 +94,7 @@ Full index in [`examples/README.md`](examples/README.md). All default to `model=
 | Folder | Description |
 |--------|-------------|
 | `examples/release-notes-agent/` | Release-notes writer: planning + on-disk skill. CLI + `langgraph.json`. **Ours.** |
+| `examples/lead-lifecycle-agent/` | **LangGraph workflow**: lead-qualification Deep Agent (per-lead memory + skill + learning loop) → engagement agent. Container-deployable. **Ours.** |
 | `examples/deep-research-agent/` | Orchestrator + parallel research subagents, `tavily_search` + `think_tool`. **Port of `langchain-ai/deepagents` (MIT).** |
 | `examples/text-to-sql-agent/` | NL → SQL on Chinook: planning + skills + `AGENTS.md` memory. **Port of `langchain-ai/deepagents` (MIT).** |
 
