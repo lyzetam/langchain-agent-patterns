@@ -1,0 +1,10 @@
+# Chinook sample database (binary — download separately, see README)
+chinook.db
+
+# Environment
+.env
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
